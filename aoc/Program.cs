@@ -118,12 +118,12 @@ namespace aoc
             // Console.WriteLine($"{s}, {start}, {end}");
             if (s.Length == 0)
                 return start;
-            var m = (int)Math.Floor((start + end) / 2.0);
+            var m = (int) Math.Floor((start + end) / 2.0);
             if (s[0] == 'F' || s[0] == 'L')
                 return BinSearch(s.Substring(1), start, m);
             return BinSearch(s.Substring(1), m + 1, end);
         }
-        
+
         static void Day5()
         {
             var seats = File.ReadAllLines("input_5.txt");
@@ -142,9 +142,27 @@ namespace aoc
             }
         }
 
+        static void Day6()
+        {
+            var answers = File.ReadAllText("input_6.txt").Split("\n\n");
+            var regex = new Regex(@"\s");
+            var count = 0;
+            foreach (var answer in answers)
+            {
+                var distinct = regex.Replace(answer, "").ToHashSet();
+                foreach (var ans in answer.Split().Select(x => x.ToHashSet()))
+                {
+                    distinct.IntersectWith(ans);
+                }
+                count += distinct.Count;
+            }
+
+            Console.WriteLine(count);
+        }
+
         static void Main(string[] args)
         {
-            Day5();
+            Day6();
         }
     }
 }

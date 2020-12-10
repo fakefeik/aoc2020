@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
+using System.Numerics;
 using System.Text.RegularExpressions;
 
 namespace aoc
@@ -154,15 +155,199 @@ namespace aoc
                 {
                     distinct.IntersectWith(ans);
                 }
+
                 count += distinct.Count;
             }
 
             Console.WriteLine(count);
         }
 
+        static void Dfs(Dictionary<string, (string, int)> parents, HashSet<(string, int)> visited,
+            Dictionary<string, (string, int)[]> dict, (string, int) start)
+        {
+            visited.Add(start);
+            if (!dict.ContainsKey(start.Item1))
+                return;
+            foreach (var node in dict[start.Item1])
+                if (!visited.Contains(node))
+                {
+                    parents[node.Item1] = start;
+                    Dfs(parents, visited, dict, node);
+                }
+        }
+
+        static int Dfs2(HashSet<(string, int)> visited,
+            Dictionary<string, (string, int)[]> dict, (string, int) start)
+        {
+            if (!dict.ContainsKey(start.Item1) || dict[start.Item1].Length == 0)
+                return 0;
+            var count = 0;
+            foreach (var node in dict[start.Item1])
+                count += node.Item2 + node.Item2 * Dfs2(visited, dict, node);
+
+            return count;
+        }
+
+        static void Day7()
+        {
+            var rules = File.ReadAllLines("input_7.txt");
+            var dict = new Dictionary<string, (string, int)[]>();
+            foreach (var rule in rules)
+            {
+                var splitted = rule.Split(" bags contain ");
+                var bag = splitted[0];
+                if (splitted[1].Contains("no other bags"))
+                {
+                    dict[bag] = new (string, int)[0];
+                    continue;
+                }
+
+                var children = splitted[1].Replace(" bags", "").Replace(" bag", "").Replace(".", "").Split(',')
+                    .Select(x => x.Trim())
+                    .Select(x => (x.Substring(x.IndexOf(' ') + 1),
+                        int.Parse(x.Substring(0, x.IndexOf(' '))))).ToArray();
+                // foreach (var child in children)
+                // {
+                //     if (dict.ContainsKey(child))
+                //         dict[child].Add(bag);
+                //     else
+                //         dict[child] = new List<string> {bag};
+                // }
+                dict[bag] = children;
+            }
+
+            var start = "shiny gold";
+            var visited = new HashSet<(string, int)>();
+            var parents = new Dictionary<string, (string, int)>();
+            // Dfs(parents, visited, dict, (start, 1));
+            Console.WriteLine(Dfs2(visited, dict, (start, 1)));
+        }
+
+        static (bool Terminates, int Result) RunProgram((string Op, int N)[] instructions)
+        {
+            var visited = new HashSet<int>();
+            var result = 0;
+            for (var i = 0; i < instructions.Length; i++)
+            {
+                if (visited.Contains(i))
+                    return (false, result);
+                visited.Add(i);
+                switch (instructions[i].Op)
+                {
+                    case "nop":
+                        break;
+                    case "acc":
+                        result += instructions[i].N;
+                        break;
+                    case "jmp":
+                        i += (instructions[i].N - 1);
+                        break;
+                }
+            }
+
+            return (true, result);
+        }
+
+        static void Day8()
+        {
+            var instructions = File.ReadAllLines("input_8.txt");
+            for (var i = 0; i < instructions.Length; i++)
+            {
+                var parsed = instructions.Select(x => (Op: x.Split(' ')[0], N: int.Parse(x.Split(' ')[1]))).ToArray();
+                if (parsed[i].Op == "acc")
+                    continue;
+                parsed[i].Op = parsed[i].Op == "nop" ? "jmp" : "nop";
+                var (terminates, result) = RunProgram(parsed);
+                if (terminates)
+                    Console.WriteLine(result);
+            }
+        }
+
+        static bool Valid(long[] numbers, int index)
+        {
+            for (var i = index - 25; i < index; i++)
+            for (var j = i + 1; j < index; j++)
+                if (numbers[i] + numbers[j] == numbers[index])
+                    return true;
+
+            return false;
+        }
+
+        static long Day9_1()
+        {
+            var numbers = File.ReadAllLines("input_9.txt").Select(long.Parse).ToArray();
+            for (var i = 25; i < numbers.Length; i++)
+            {
+                if (!Valid(numbers, i))
+                    return numbers[i];
+            }
+
+            return -1;
+        }
+
+        static void Day9_2(long invalid)
+        {
+            var numbers = File.ReadAllLines("input_9.txt").Select(long.Parse).ToArray();
+            for (var i = 0; i < numbers.Length; i++)
+            for (var j = i + 1; j < numbers.Length; j++)
+                if (numbers.Skip(i).Take(j - i).Sum() == invalid)
+                {
+                    Console.WriteLine(i);
+                    Console.WriteLine(j);
+                    Console.WriteLine(numbers[i] + numbers[j - 1]);
+                }
+        }
+
+        static BigInteger CountArrangemets(Dictionary<int, BigInteger> cache, int[] arr, int i)
+        {
+            if (i == arr.Length - 1)
+                return 1;
+            BigInteger counts = 0;
+            for (var j = i + 1; j < arr.Length; j++)
+            {
+                if (arr[j] - arr[i] <= 3 && cache.ContainsKey(j))
+                {
+                    counts += cache[j];
+                }
+                else if (arr[j] - arr[i] <= 3)
+                {
+                    cache[j] = CountArrangemets(cache, arr, j);
+                    counts += cache[j];
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return counts;
+        }
+
+        static void Day10()
+        {
+            var jolts = File.ReadAllLines("input_10.txt").Select(int.Parse).OrderBy(x => x).ToArray();
+            var diff1 = 0;
+            var diff3 = 1;
+            for (var i = 0; i < jolts.Length; i++)
+            {
+                var diff = 0;
+                if (i == 0)
+                    diff = jolts[0];
+                else
+                    diff = jolts[i] - jolts[i - 1];
+                if (diff == 1)
+                    diff1++;
+                if (diff == 3)
+                    diff3++;
+            }
+
+            // Console.WriteLine(diff1 * diff3);
+            Console.WriteLine(CountArrangemets(new Dictionary<int, BigInteger>(), jolts, 0));
+        }
+
         static void Main(string[] args)
         {
-            Day6();
+            Day10();
         }
     }
 }
